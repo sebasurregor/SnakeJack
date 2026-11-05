@@ -1,0 +1,193 @@
+// =====================================================================
+// Archivo : SnakeGame.jack
+// ---------------------------------------------------------------------
+// Es el "director" del juego. Crea y coordina a los demas objetos:
+//
+//                       SnakeGame
+//          ___________/   |    |  \___________
+//         /               |    |              \
+//      Board            Snake  Food            Hud
+//   (paredes y        (cuerpo y (comida)   (puntaje y
+//    casillas)        movimiento)           mensajes)
+//
+// Aqui vive el GAME LOOP (bucle principal). Cada vuelta del bucle es
+// un "cuadro" (frame) y tiene tres fases, siempre en este orden:
+//
+//   1. LEER ENTRADAS  -> Keyboard.keyPressed()
+//   2. ACTUALIZAR     -> mover la culebra y revisar colisiones/comida
+//   3. DIBUJAR        -> redibujar solo lo que cambio + HUD
+//
+// Entre cuadros se usa Sys.wait(ms) para que el juego avance a una
+// velocidad que un humano pueda seguir y para no saturar el simulador.
+//
+// ESTADOS DEL JUEGO: INICIO -> JUGANDO -> (GAME OVER | VICTORIA) -> fin
+//
+// CODIGOS DE TECLA (Keyboard.keyPressed devuelve 0 si no hay tecla):
+//   130 = flecha izquierda   131 = flecha arriba
+//   132 = flecha derecha     133 = flecha abajo
+//   140 = ESC   32 = espacio   82 / 114 = R / r
+// =====================================================================
+
+class SnakeGame {
+
+    field Board board;
+    field Snake snake;
+    field Food food;
+    field Hud hud;
+    field int score;       // puntaje: +10 por cada comida
+    field int maxLength;   // REGLA DEL JUEGO: longitud maxima = 20
+
+    /** Constructor: crea todos los objetos de una partida nueva. */
+    constructor SnakeGame new() {
+        let maxLength = 20;
+        let score = 0;
+        let board = Board.new();
+        // La cabeza empieza en el centro: columna 30, fila 14.
+        let snake = Snake.new(board, 30, 14, maxLength);
+        let food = Food.new(board);
+        let hud = Hud.new(maxLength);
+        return this;
+    }
+
+    /**
+     * Libera la partida completa. El orden importa: primero los objetos
+     * que esta partida creo (cada uno libera lo suyo) y al final ella
+     * misma. Asi el heap queda igual que antes de crear la partida.
+     */
+    method void dispose() {
+        do snake.dispose();
+        do food.dispose();
+        do board.dispose();
+        do hud.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    /**
+     * Espera a que el jugador SUELTE todas las teclas. Sin esto, la
+     * misma pulsacion de ESPACIO o R se leeria varias veces seguidas.
+     */
+    method void waitRelease() {
+        while (Keyboard.keyPressed() > 0) {
+            do Sys.wait(5);
+        }
+        return;
+    }
+
+    /**
+     * Ejecuta una partida completa.
+     * Devuelve true si el jugador quiere reiniciar (R) y false si quiere
+     * salir (ESC).
+     */
+    method boolean run() {
+        var int key, lastKey, i, slice, nc, nr;
+        var boolean playing, grow, won;
+
+        // ------------------ ESTADO: INICIO ------------------
+        do Screen.clearScreen();
+        do board.draw();
+        do hud.showStart();
+
+        // Esperamos ESPACIO o ESC. Mientras esperamos, "revolvemos" la
+        // semilla del generador aleatorio en cada vuelta: como no se
+        // sabe cuantas vueltas pasaran, cada partida sera diferente.
+        let key = 0;
+        while (~((key = 32) | (key = 140))) {
+            do Random.mix(1);
+            let key = Keyboard.keyPressed();
+        }
+        do waitRelease();
+        if (key = 140) { return false; }   // ESC en el menu: salir
+
+        // ---------- Preparar el escenario de juego ----------
+        do Screen.clearScreen();
+        do board.draw();
+        do hud.drawLabels();
+        do snake.draw();
+        do food.relocate(snake);
+        do food.draw();
+        do hud.update(score, snake.getLength());
+
+        // ------------------ ESTADO: JUGANDO -----------------
+        let playing = true;
+        let won = false;
+
+        while (playing) {
+
+            // ===== FASE 1: LEER ENTRADAS =====
+            // El cuadro dura 4 "rebanadas" de tiempo. En cada rebanada
+            // revisamos el teclado; asi una flecha presionada rapido no
+            // se pierde aunque se suelte antes de que termine el cuadro.
+            // La duracion baja a medida que la culebra crece: el juego
+            // se vuelve un poco mas rapido (de ~108 ms a ~72 ms por cuadro).
+            let slice = 28 - (snake.getLength() / 2);
+            let lastKey = 0;
+            let i = 0;
+            while (i < 4) {
+                let key = Keyboard.keyPressed();
+                if (key > 0) { let lastKey = key; }
+                do Sys.wait(slice);
+                let i = i + 1;
+            }
+
+            // Solo se aplica UNA direccion por cuadro (la ultima tecla).
+            if (lastKey = 131) { do snake.setDirection(1); }   // arriba
+            if (lastKey = 133) { do snake.setDirection(2); }   // abajo
+            if (lastKey = 130) { do snake.setDirection(3); }   // izquierda
+            if (lastKey = 132) { do snake.setDirection(4); }   // derecha
+            if (lastKey = 140) { return false; }               // ESC: salir
+
+            // ===== FASE 2: ACTUALIZAR ESTADO =====
+            // Calculamos a donde IRIA la cabeza antes de moverla, para
+            // poder revisar las colisiones primero.
+            let nc = snake.nextCol();
+            let nr = snake.nextRow();
+
+            if (~board.isInside(nc, nr)) {
+                // Colision con la pared -> Game Over.
+                let playing = false;
+            } else {
+                // Hay comida en la casilla de destino?
+                let grow = (nc = food.getCol()) & (nr = food.getRow());
+
+                // Colision consigo misma. Si NO come, la cola se movera,
+                // por eso se ignora la cola (ignoreTail = ~grow).
+                if (snake.occupies(nc, nr, ~grow)) {
+                    let playing = false;
+                } else {
+                    // ===== FASE 3: DIBUJAR (solo lo que cambio) =====
+                    do snake.move(nc, nr, grow);
+
+                    if (grow) {
+                        let score = score + 10;
+                        if (snake.getLength() = maxLength) {
+                            // Regla: al llegar a longitud 20 se GANA.
+                            let won = true;
+                            let playing = false;
+                        } else {
+                            do food.relocate(snake);
+                            do food.draw();
+                        }
+                        do hud.update(score, snake.getLength());
+                    }
+                }
+            }
+        }
+
+        // ------------- ESTADO: GAME OVER o VICTORIA -------------
+        if (won) {
+            do hud.showWin(score);
+        } else {
+            do hud.showGameOver(score);
+        }
+
+        // Esperamos R (reiniciar) o ESC (salir).
+        do waitRelease();
+        let key = 0;
+        while (~((key = 82) | (key = 114) | (key = 140))) {
+            let key = Keyboard.keyPressed();
+        }
+        do waitRelease();
+        return ~(key = 140);
+    }
+}

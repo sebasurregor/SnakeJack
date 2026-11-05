@@ -1,0 +1,365 @@
+function SnakeGame.new 0
+    push constant 6
+    call Memory.alloc 1
+    pop pointer 0
+    push constant 20
+    pop this 5
+    push constant 0
+    pop this 4
+    call Board.new 0
+    pop this 0
+    push this 0
+    push constant 30
+    push constant 14
+    push this 5
+    call Snake.new 4
+    pop this 1
+    push this 0
+    call Food.new 1
+    pop this 2
+    push this 5
+    call Hud.new 1
+    pop this 3
+    push pointer 0
+    return
+function SnakeGame.dispose 0
+    push argument 0
+    pop pointer 0
+    push this 1
+    call Snake.dispose 1
+    pop temp 0
+    push this 2
+    call Food.dispose 1
+    pop temp 0
+    push this 0
+    call Board.dispose 1
+    pop temp 0
+    push this 3
+    call Hud.dispose 1
+    pop temp 0
+    push pointer 0
+    call Memory.deAlloc 1
+    pop temp 0
+    push constant 0
+    return
+function SnakeGame.waitRelease 0
+    push argument 0
+    pop pointer 0
+label SnakeGame_0
+    call Keyboard.keyPressed 0
+    push constant 0
+    gt
+    not
+    if-goto SnakeGame_1
+    push constant 5
+    call Sys.wait 1
+    pop temp 0
+    goto SnakeGame_0
+label SnakeGame_1
+    push constant 0
+    return
+function SnakeGame.run 9
+    push argument 0
+    pop pointer 0
+    call Screen.clearScreen 0
+    pop temp 0
+    push this 0
+    call Board.draw 1
+    pop temp 0
+    push this 3
+    call Hud.showStart 1
+    pop temp 0
+    push constant 0
+    pop local 0
+label SnakeGame_2
+    push local 0
+    push constant 32
+    eq
+    push local 0
+    push constant 140
+    eq
+    or
+    not
+    not
+    if-goto SnakeGame_3
+    push constant 1
+    call Random.mix 1
+    pop temp 0
+    call Keyboard.keyPressed 0
+    pop local 0
+    goto SnakeGame_2
+label SnakeGame_3
+    push pointer 0
+    call SnakeGame.waitRelease 1
+    pop temp 0
+    push local 0
+    push constant 140
+    eq
+    not
+    if-goto SnakeGame_5
+    push constant 0
+    return
+    goto SnakeGame_4
+label SnakeGame_5
+label SnakeGame_4
+    call Screen.clearScreen 0
+    pop temp 0
+    push this 0
+    call Board.draw 1
+    pop temp 0
+    push this 3
+    call Hud.drawLabels 1
+    pop temp 0
+    push this 1
+    call Snake.draw 1
+    pop temp 0
+    push this 2
+    push this 1
+    call Food.relocate 2
+    pop temp 0
+    push this 2
+    call Food.draw 1
+    pop temp 0
+    push this 3
+    push this 4
+    push this 1
+    call Snake.getLength 1
+    call Hud.update 3
+    pop temp 0
+    push constant 1
+    neg
+    pop local 6
+    push constant 0
+    pop local 8
+label SnakeGame_6
+    push local 6
+    not
+    if-goto SnakeGame_7
+    push constant 28
+    push this 1
+    call Snake.getLength 1
+    push constant 2
+    call Math.divide 2
+    sub
+    pop local 3
+    push constant 0
+    pop local 1
+    push constant 0
+    pop local 2
+label SnakeGame_8
+    push local 2
+    push constant 4
+    lt
+    not
+    if-goto SnakeGame_9
+    call Keyboard.keyPressed 0
+    pop local 0
+    push local 0
+    push constant 0
+    gt
+    not
+    if-goto SnakeGame_11
+    push local 0
+    pop local 1
+    goto SnakeGame_10
+label SnakeGame_11
+label SnakeGame_10
+    push local 3
+    call Sys.wait 1
+    pop temp 0
+    push local 2
+    push constant 1
+    add
+    pop local 2
+    goto SnakeGame_8
+label SnakeGame_9
+    push local 1
+    push constant 131
+    eq
+    not
+    if-goto SnakeGame_13
+    push this 1
+    push constant 1
+    call Snake.setDirection 2
+    pop temp 0
+    goto SnakeGame_12
+label SnakeGame_13
+label SnakeGame_12
+    push local 1
+    push constant 133
+    eq
+    not
+    if-goto SnakeGame_15
+    push this 1
+    push constant 2
+    call Snake.setDirection 2
+    pop temp 0
+    goto SnakeGame_14
+label SnakeGame_15
+label SnakeGame_14
+    push local 1
+    push constant 130
+    eq
+    not
+    if-goto SnakeGame_17
+    push this 1
+    push constant 3
+    call Snake.setDirection 2
+    pop temp 0
+    goto SnakeGame_16
+label SnakeGame_17
+label SnakeGame_16
+    push local 1
+    push constant 132
+    eq
+    not
+    if-goto SnakeGame_19
+    push this 1
+    push constant 4
+    call Snake.setDirection 2
+    pop temp 0
+    goto SnakeGame_18
+label SnakeGame_19
+label SnakeGame_18
+    push local 1
+    push constant 140
+    eq
+    not
+    if-goto SnakeGame_21
+    push constant 0
+    return
+    goto SnakeGame_20
+label SnakeGame_21
+label SnakeGame_20
+    push this 1
+    call Snake.nextCol 1
+    pop local 4
+    push this 1
+    call Snake.nextRow 1
+    pop local 5
+    push this 0
+    push local 4
+    push local 5
+    call Board.isInside 3
+    not
+    not
+    if-goto SnakeGame_23
+    push constant 0
+    pop local 6
+    goto SnakeGame_22
+label SnakeGame_23
+    push local 4
+    push this 2
+    call Food.getCol 1
+    eq
+    push local 5
+    push this 2
+    call Food.getRow 1
+    eq
+    and
+    pop local 7
+    push this 1
+    push local 4
+    push local 5
+    push local 7
+    not
+    call Snake.occupies 4
+    not
+    if-goto SnakeGame_25
+    push constant 0
+    pop local 6
+    goto SnakeGame_24
+label SnakeGame_25
+    push this 1
+    push local 4
+    push local 5
+    push local 7
+    call Snake.move 4
+    pop temp 0
+    push local 7
+    not
+    if-goto SnakeGame_27
+    push this 4
+    push constant 10
+    add
+    pop this 4
+    push this 1
+    call Snake.getLength 1
+    push this 5
+    eq
+    not
+    if-goto SnakeGame_29
+    push constant 1
+    neg
+    pop local 8
+    push constant 0
+    pop local 6
+    goto SnakeGame_28
+label SnakeGame_29
+    push this 2
+    push this 1
+    call Food.relocate 2
+    pop temp 0
+    push this 2
+    call Food.draw 1
+    pop temp 0
+label SnakeGame_28
+    push this 3
+    push this 4
+    push this 1
+    call Snake.getLength 1
+    call Hud.update 3
+    pop temp 0
+    goto SnakeGame_26
+label SnakeGame_27
+label SnakeGame_26
+label SnakeGame_24
+label SnakeGame_22
+    goto SnakeGame_6
+label SnakeGame_7
+    push local 8
+    not
+    if-goto SnakeGame_31
+    push this 3
+    push this 4
+    call Hud.showWin 2
+    pop temp 0
+    goto SnakeGame_30
+label SnakeGame_31
+    push this 3
+    push this 4
+    call Hud.showGameOver 2
+    pop temp 0
+label SnakeGame_30
+    push pointer 0
+    call SnakeGame.waitRelease 1
+    pop temp 0
+    push constant 0
+    pop local 0
+label SnakeGame_32
+    push local 0
+    push constant 82
+    eq
+    push local 0
+    push constant 114
+    eq
+    or
+    push local 0
+    push constant 140
+    eq
+    or
+    not
+    not
+    if-goto SnakeGame_33
+    call Keyboard.keyPressed 0
+    pop local 0
+    goto SnakeGame_32
+label SnakeGame_33
+    push pointer 0
+    call SnakeGame.waitRelease 1
+    pop temp 0
+    push local 0
+    push constant 140
+    eq
+    not
+    return

@@ -1,0 +1,212 @@
+// =====================================================================
+// Archivo : Snake.jack
+// ---------------------------------------------------------------------
+// Representa a la culebrita. Su cuerpo se guarda en DOS arreglos
+// paralelos:
+//      xs[i] = columna del segmento i
+//      ys[i] = fila    del segmento i
+// El indice 0 es la CABEZA y el indice (length - 1) es la COLA.
+//
+// Ejemplo con length = 3 mirando a la derecha:
+//      indice:   2     1     0
+//               [C]   [B]   [H]  -->
+//               cola        cabeza
+//
+// Como la longitud maxima es 20, los arreglos se crean UNA sola vez de
+// tamano 20 (Array.new(20)) y nunca se agrandan. Esto evita pedir y
+// liberar memoria en cada movimiento.
+//
+// MOVIMIENTO: cada segmento pasa a ocupar el lugar del segmento que
+// tiene adelante (corrimiento del arreglo) y la cabeza ocupa la casilla
+// nueva. En pantalla solo se redibujan 3 casillas por cuadro:
+//      1) se borra la cola vieja (si no comio),
+//      2) la cabeza vieja se dibuja como cuerpo,
+//      3) se dibuja la cabeza nueva.
+// Redibujar 3 casillas en vez de toda la culebra evita el parpadeo.
+//
+// DIRECCIONES (constantes del juego):
+//      1 = arriba   2 = abajo   3 = izquierda   4 = derecha
+// =====================================================================
+
+class Snake {
+
+    field Array xs;        // columnas de cada segmento
+    field Array ys;        // filas de cada segmento
+    field int length;      // cuantos segmentos tiene ahora
+    field int maxLength;   // longitud maxima permitida (20)
+    field int direction;   // direccion actual (1..4)
+    field Board board;     // referencia al tablero (para dibujar)
+
+    /**
+     * Constructor.
+     * b       : tablero donde vive la culebra.
+     * col,row : casilla inicial de la cabeza.
+     * maxLen  : longitud maxima (tamano de los arreglos).
+     * Crea una culebra de 3 segmentos horizontales mirando a la derecha.
+     */
+    constructor Snake new(Board b, int col, int row, int maxLen) {
+        let board = b;
+        let maxLength = maxLen;
+
+        // Array.new reserva maxLen palabras en el heap (Memory.alloc).
+        let xs = Array.new(maxLength);
+        let ys = Array.new(maxLength);
+
+        let length = 3;
+        let direction = 4;          // empieza hacia la derecha
+
+        let xs[0] = col;     let ys[0] = row;   // cabeza
+        let xs[1] = col - 1; let ys[1] = row;   // cuerpo
+        let xs[2] = col - 2; let ys[2] = row;   // cola
+        return this;
+    }
+
+    /**
+     * Libera la memoria: PRIMERO los arreglos internos y DESPUES el
+     * objeto. Si solo hicieramos Memory.deAlloc(this), los dos arreglos
+     * quedarian "huerfanos" en el heap (fuga de memoria).
+     */
+    method void dispose() {
+        do xs.dispose();
+        do ys.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    /** Dibuja la culebra completa (solo al iniciar la partida). */
+    method void draw() {
+        var int i;
+        do drawHead(xs[0], ys[0]);
+        let i = 1;
+        while (i < length) {
+            do drawBody(xs[i], ys[i]);
+            let i = i + 1;
+        }
+        return;
+    }
+
+    /** Borra la culebra completa de la pantalla. */
+    method void erase() {
+        var int i;
+        let i = 0;
+        while (i < length) {
+            do board.eraseCell(xs[i], ys[i]);
+            let i = i + 1;
+        }
+        return;
+    }
+
+    /** Sprite de la CABEZA: cuadro 7x7 totalmente relleno. */
+    method void drawHead(int col, int row) {
+        var int x, y;
+        let x = board.toX(col);
+        let y = board.toY(row);
+        do Screen.setColor(true);
+        do Screen.drawRectangle(x, y, x + 6, y + 6);
+        return;
+    }
+
+    /**
+     * Sprite del CUERPO: cuadro 7x7 con un hueco de 3x3 en el centro,
+     * para que se diferencie visualmente de la cabeza.
+     */
+    method void drawBody(int col, int row) {
+        var int x, y;
+        let x = board.toX(col);
+        let y = board.toY(row);
+        do Screen.setColor(true);
+        do Screen.drawRectangle(x, y, x + 6, y + 6);
+        do Screen.setColor(false);
+        do Screen.drawRectangle(x + 2, y + 2, x + 4, y + 4);
+        return;
+    }
+
+    /**
+     * Cambia la direccion, pero PROHIBE el giro de 180 grados.
+     * Si la culebra va a la derecha y se pide izquierda, se ignora,
+     * porque la cabeza chocaria inmediatamente con su propio cuello.
+     */
+    method void setDirection(int d) {
+        if ((d = 1) & (direction = 2)) { return; }   // arriba vs abajo
+        if ((d = 2) & (direction = 1)) { return; }   // abajo vs arriba
+        if ((d = 3) & (direction = 4)) { return; }   // izq vs der
+        if ((d = 4) & (direction = 3)) { return; }   // der vs izq
+        let direction = d;
+        return;
+    }
+
+    /** Columna a la que ira la cabeza en el siguiente paso. */
+    method int nextCol() {
+        if (direction = 3) { return xs[0] - 1; }   // izquierda: col - 1
+        if (direction = 4) { return xs[0] + 1; }   // derecha:   col + 1
+        return xs[0];                              // arriba/abajo: igual
+    }
+
+    /** Fila a la que ira la cabeza en el siguiente paso. */
+    method int nextRow() {
+        if (direction = 1) { return ys[0] - 1; }   // arriba: fila - 1 (y crece hacia abajo)
+        if (direction = 2) { return ys[0] + 1; }   // abajo:  fila + 1
+        return ys[0];
+    }
+
+    /**
+     * Pregunta si algun segmento ocupa la casilla (col, row).
+     * ignoreTail = true  -> no revisa la cola. Se usa al detectar el
+     *   choque consigo misma cuando NO va a comer: en ese paso la cola
+     *   se mueve, asi que la cabeza SI puede entrar donde estaba la cola.
+     * ignoreTail = false -> revisa todo el cuerpo (por ejemplo, para que
+     *   la comida no aparezca encima de la culebra).
+     */
+    method boolean occupies(int col, int row, boolean ignoreTail) {
+        var int i, limit;
+        let limit = length;
+        if (ignoreTail) { let limit = length - 1; }
+        let i = 0;
+        while (i < limit) {
+            if ((xs[i] = col) & (ys[i] = row)) { return true; }
+            let i = i + 1;
+        }
+        return false;
+    }
+
+    /**
+     * Avanza la culebra una casilla hacia (newCol, newRow).
+     * grow = true si en esa casilla habia comida: entonces NO se borra
+     * la cola y la longitud aumenta en 1 (asi es como "crece").
+     * Precondicion: length < maxLength cuando grow es true (lo garantiza
+     * SnakeGame, que declara la victoria al llegar a 20).
+     */
+    method void move(int newCol, int newRow, boolean grow) {
+        var int i;
+
+        if (grow) {
+            let length = length + 1;   // se agrega un espacio al final
+        } else {
+            // La cola desaparece de la pantalla porque se va a mover.
+            do board.eraseCell(xs[length - 1], ys[length - 1]);
+        }
+
+        // La cabeza vieja ahora es parte del cuerpo.
+        do drawBody(xs[0], ys[0]);
+
+        // Corrimiento: recorremos de atras hacia adelante para no pisar
+        // valores que todavia no hemos copiado. El segmento i toma la
+        // posicion del segmento i-1 (el que tenia adelante).
+        let i = length - 1;
+        while (i > 0) {
+            let xs[i] = xs[i - 1];
+            let ys[i] = ys[i - 1];
+            let i = i - 1;
+        }
+
+        // La cabeza ocupa la casilla nueva.
+        let xs[0] = newCol;
+        let ys[0] = newRow;
+        do drawHead(newCol, newRow);
+        return;
+    }
+
+    /** Getters. */
+    method int getLength() { return length; }
+    method int getMaxLength() { return maxLength; }
+}

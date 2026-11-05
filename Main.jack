@@ -1,0 +1,61 @@
+// =====================================================================
+// Archivo : Main.jack
+// Proyecto: Snake en Jack (Nand2Tetris) - Tercer Parcial / Proyecto Final
+// Autor   : Sebastian Urrego Ramirez
+// ---------------------------------------------------------------------
+// Main es el PUNTO DE ENTRADA del programa. Cuando el VM Emulator carga
+// la carpeta del proyecto, el sistema operativo de Jack (Sys.init)
+// inicializa sus librerias (Memory, Math, Screen, Output, Keyboard...)
+// y despues llama automaticamente a la funcion Main.main().
+//
+// Responsabilidad de esta clase: NO sabe nada de culebras ni comida.
+// Solo controla el "ciclo de vida" de las partidas:
+//     crear partida  ->  jugarla  ->  destruirla  ->  repetir?
+// Esto demuestra el reinicio SIN FUGA DE MEMORIA: cada partida se
+// libera completa con dispose() antes de crear la siguiente.
+// =====================================================================
+
+class Main {
+
+    /**
+     * main: funcion inicial del programa.
+     * No recibe parametros y no devuelve nada (void).
+     * Repite partidas mientras el jugador presione R al terminar.
+     */
+    function void main() {
+        var SnakeGame game;      // referencia (direccion en el heap) a la partida actual
+        var boolean jugarOtra;   // true si el jugador quiere reiniciar
+
+        // Los textos del juego se crean UNA sola vez para todo el
+        // programa (ver explicacion en Hud.jack).
+        do Hud.init();
+
+        let jugarOtra = true;
+
+        while (jugarOtra) {
+            // 1. Pedimos memoria para una partida nueva. SnakeGame.new
+            //    reserva el objeto en el heap con Memory.alloc (lo hace
+            //    el compilador por nosotros dentro del constructor).
+            let game = SnakeGame.new();
+
+            // 2. run() contiene el game loop completo. Devuelve true si
+            //    el jugador presiono R (reiniciar) y false si presiono ESC.
+            let jugarOtra = game.run();
+
+            // 3. Liberamos TODA la memoria de la partida (culebra, comida,
+            //    tablero, HUD y el propio objeto). Si no hicieramos esto,
+            //    cada reinicio dejaria "basura" en el heap y despues de
+            //    muchas partidas el programa se quedaria sin memoria.
+            do game.dispose();
+        }
+
+        // Ya no habra mas partidas: liberamos los textos compartidos.
+        do Hud.freeTexts();
+
+        // Pantalla final al salir con ESC.
+        do Screen.clearScreen();
+        do Output.moveCursor(11, 24);
+        do Hud.printText("HASTA LUEGO :)");
+        return;
+    }
+}

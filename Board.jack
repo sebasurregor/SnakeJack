@@ -1,0 +1,105 @@
+// =====================================================================
+// Archivo : Board.jack
+// ---------------------------------------------------------------------
+// El tablero es una CUADRICULA LOGICA de 60 columnas x 28 filas. Cada
+// casilla mide 8 x 8 pixeles en la pantalla (512 x 256 pixeles en total).
+//
+// Trabajar con casillas y no con pixeles simplifica todo el juego:
+//   - la culebra se mueve de a 1 casilla (no de a 8 pixeles),
+//   - las colisiones se reducen a comparar dos pares (columna, fila),
+//   - y solo esta clase sabe convertir casillas a pixeles.
+//
+// Distribucion de la pantalla (eje y crece hacia ABAJO en Hack):
+//
+//   y = 0..10    -> fila de texto 0: HUD (puntaje y longitud)
+//   y = 20..251  -> marco del tablero (3 px de grosor)
+//   y = 24..247  -> zona de juego: 28 filas x 8 px = 224 px
+//   x = 16..495  -> zona de juego: 60 columnas x 8 px = 480 px
+//
+// Conversion casilla -> pixel (esquina superior izquierda de la casilla):
+//        x = ORIGEN_X + (columna * 8)
+//        y = ORIGEN_Y + (fila    * 8)
+// =====================================================================
+
+class Board {
+
+    field int cols;      // numero de columnas de la cuadricula (60)
+    field int rows;      // numero de filas de la cuadricula (28)
+    field int cellSize;  // tamano de una casilla en pixeles (8)
+    field int originX;   // pixel x donde empieza la columna 0 (16)
+    field int originY;   // pixel y donde empieza la fila 0 (24)
+
+    /**
+     * Constructor: guarda las medidas del tablero.
+     * Devuelve la referencia al nuevo objeto Board.
+     */
+    constructor Board new() {
+        let cols = 60;
+        let rows = 28;
+        let cellSize = 8;
+        let originX = 16;
+        let originY = 24;
+        return this;
+    }
+
+    /** Libera la memoria del objeto (no tiene arreglos internos). */
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    /**
+     * Dibuja el marco (las paredes) del tablero.
+     * Tecnica: pintamos un rectangulo negro grande y luego "borramos"
+     * (pintamos en blanco) uno un poco mas pequeno por dentro. Lo que
+     * sobrevive es un marco de 3 px. Son solo 2 llamadas a Screen,
+     * mucho mas eficiente que dibujar las 4 lineas pixel por pixel.
+     */
+    method void draw() {
+        do Screen.setColor(true);                    // true = negro
+        do Screen.drawRectangle(12, 20, 499, 251);   // rectangulo exterior
+        do Screen.setColor(false);                   // false = blanco
+        do Screen.drawRectangle(15, 23, 496, 248);   // hueco interior
+        return;
+    }
+
+    /**
+     * Pregunta si la casilla (col, row) esta DENTRO del tablero.
+     * Devuelve true si esta dentro y false si toco una pared.
+     * Esta es la regla "LAS PAREDES MATAN": no hay teletransporte al
+     * otro lado; si la cabeza sale de 0..cols-1 o de 0..rows-1, pierde.
+     */
+    method boolean isInside(int col, int row) {
+        if (col < 0)          { return false; }   // pared izquierda
+        if (row < 0)          { return false; }   // pared de arriba
+        if (col > (cols - 1)) { return false; }   // pared derecha
+        if (row > (rows - 1)) { return false; }   // pared de abajo
+        return true;
+    }
+
+    /** Convierte una columna en el pixel x de su esquina izquierda. */
+    method int toX(int col) {
+        return originX + (col * cellSize);
+    }
+
+    /** Convierte una fila en el pixel y de su esquina superior. */
+    method int toY(int row) {
+        return originY + (row * cellSize);
+    }
+
+    /** Borra (pinta de blanco) el contenido de una casilla. */
+    method void eraseCell(int col, int row) {
+        var int x, y;
+        let x = toX(col);
+        let y = toY(row);
+        do Screen.setColor(false);
+        // Usamos 7x7 pixeles (x..x+6) y no 8x8 para dejar 1 px de
+        // separacion entre casillas: asi se distinguen los segmentos.
+        do Screen.drawRectangle(x, y, x + 6, y + 6);
+        return;
+    }
+
+    /** Getters: otras clases los usan sin poder modificar los campos. */
+    method int getCols() { return cols; }
+    method int getRows() { return rows; }
+}

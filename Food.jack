@@ -1,0 +1,68 @@
+// =====================================================================
+// Archivo : Food.jack
+// ---------------------------------------------------------------------
+// La comida es un circulo pequeno que ocupa una casilla del tablero.
+// Cuando la culebra se la come, la misma comida se "reubica" en otra
+// casilla aleatoria LIBRE. No se crea un objeto nuevo cada vez: se
+// reutiliza el mismo, asi no se pide memoria dentro del game loop.
+// =====================================================================
+
+class Food {
+
+    field int col;       // columna actual de la comida
+    field int row;       // fila actual de la comida
+    field Board board;   // tablero (para convertir casillas a pixeles)
+
+    /** Constructor: la comida empieza en (0,0); luego se reubica. */
+    constructor Food new(Board b) {
+        let board = b;
+        let col = 0;
+        let row = 0;
+        return this;
+    }
+
+    /** Libera la memoria del objeto. */
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    /**
+     * Sprite de la comida: un circulo de radio 3 centrado en la casilla.
+     * La casilla visible va de x a x+6, por eso el centro es x+3, y+3.
+     */
+    method void draw() {
+        var int x, y;
+        let x = board.toX(col);
+        let y = board.toY(row);
+        do Screen.setColor(true);
+        do Screen.drawCircle(x + 3, y + 3, 3);
+        return;
+    }
+
+    /** Borra la comida pintando su casilla de blanco. */
+    method void erase() {
+        do board.eraseCell(col, row);
+        return;
+    }
+
+    /**
+     * Elige una casilla aleatoria que NO este ocupada por la culebra.
+     * Se repite el sorteo hasta encontrar una libre. Como la culebra
+     * ocupa como maximo 20 de las 1680 casillas (60 x 28), casi siempre
+     * acierta al primer intento.
+     */
+    method void relocate(Snake snake) {
+        let col = Random.next(board.getCols());
+        let row = Random.next(board.getRows());
+        while (snake.occupies(col, row, false)) {
+            let col = Random.next(board.getCols());
+            let row = Random.next(board.getRows());
+        }
+        return;
+    }
+
+    /** Getters usados por SnakeGame para detectar si se la comio. */
+    method int getCol() { return col; }
+    method int getRow() { return row; }
+}

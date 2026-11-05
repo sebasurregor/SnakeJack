@@ -1,0 +1,58 @@
+// =====================================================================
+// Archivo : Random.jack
+// ---------------------------------------------------------------------
+// Jack NO trae una funcion para numeros aleatorios. Por eso construimos
+// un generador PSEUDOaleatorio sencillo llamado "Generador Congruencial
+// Lineal" (LCG). La idea es aplicar siempre la misma formula:
+//
+//         semilla_nueva = (semilla * A) + C
+//
+// Como los enteros de Jack son de 16 bits con signo (-32768 .. 32767),
+// cuando el resultado se pasa del rango "da la vuelta" (desbordamiento).
+// Ese desbordamiento mezcla los bits y produce una secuencia que parece
+// aleatoria aunque en realidad es deterministica.
+//
+// Para que cada partida sea distinta, la semilla se "revuelve" mientras
+// el jugador esta en la pantalla de inicio (no sabemos cuantos ciclos
+// tardara en presionar ESPACIO, y eso vuelve impredecible la semilla).
+//
+// Solo usa variables STATIC (una sola copia para todo el programa), por
+// eso no tiene constructor ni dispose: no se crean objetos Random.
+// =====================================================================
+
+class Random {
+
+    static int seed;   // estado interno del generador
+
+    /**
+     * Cambia la semilla. Se llama desde la pantalla de inicio.
+     * Parametro s: cualquier entero.
+     */
+    function void mix(int s) {
+        let seed = seed + s;
+        return;
+    }
+
+    /**
+     * Devuelve un entero pseudoaleatorio entre 0 y (n - 1).
+     * Parametro n: limite superior (exclusivo); debe ser mayor que 0.
+     * Se usa para escoger la columna y la fila de la comida.
+     */
+    function int next(int n) {
+        var int r, cociente;
+
+        // Paso del LCG. OJO: en Jack no hay precedencia de operadores,
+        // las expresiones se evaluan de izquierda a derecha, por eso
+        // ponemos parentesis explicitos.
+        let seed = (seed * 25173) + 13849;
+
+        // "& 32767" apaga el bit 15 (bit de signo). Asi r queda siempre
+        // positivo (0..32767) sin importar si seed se volvio negativa.
+        let r = seed & 32767;
+
+        // Jack no tiene operador modulo (%). Lo calculamos a mano:
+        //   r mod n = r - (r / n) * n      (la division es entera)
+        let cociente = r / n;
+        return r - (cociente * n);
+    }
+}

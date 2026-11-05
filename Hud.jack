@@ -1,0 +1,198 @@
+// =====================================================================
+// Archivo : Hud.jack
+// ---------------------------------------------------------------------
+// HUD = "Heads-Up Display": la informacion que se ve encima del juego
+// (puntaje y longitud). Tambien dibuja las pantallas de texto: inicio,
+// Game Over y Victoria.
+//
+// La libreria Output divide la pantalla en 23 filas x 64 columnas de
+// caracteres; cada caracter mide 8 x 11 pixeles.
+//   Output.moveCursor(fila, columna) -> mueve el cursor de texto.
+//   Output.printString(s)            -> escribe un String.
+//   Output.printInt(n)               -> escribe un entero.
+//   Output.printChar(c)              -> escribe un caracter (codigo ASCII).
+//
+// DETALLE IMPORTANTE DE MEMORIA (por que los textos son STATIC):
+// En Jack, cada literal como "GAME OVER" se convierte en un String.new
+// seguido de varios appendChar. Es decir, CADA VEZ que se ejecuta esa
+// linea se reserva un String nuevo en el heap. Si lo imprimieramos en
+// cada partida (o peor, en cada cuadro), el heap se iria llenando de
+// textos que nadie libera.
+//
+// Solucion: todos los textos se crean UNA SOLA VEZ al iniciar el programa
+// (Hud.init) y se guardan en variables static. Las partidas solo los
+// reutilizan. Al salir del programa, Hud.freeTexts los libera.
+// Dentro del game loop solo se imprimen NUMEROS con printInt.
+// =====================================================================
+
+class Hud {
+
+    // ---- Textos compartidos por todas las partidas (una copia) ----
+    static String tPuntaje, tLongitud, tSlash, tTitulo;
+    static String tInicio1, tInicio2, tInicio3, tInicio4, tInicio5, tInicio6;
+    static String tGameOver, tGanaste, tLlegaste, tFinal, tOpciones;
+
+    field int maxLength;   // se muestra como "LONGITUD: x / 20"
+
+    /**
+     * Crea todos los textos del juego. Se llama UNA vez desde Main,
+     * antes de la primera partida.
+     */
+    function void init() {
+        let tPuntaje  = "PUNTAJE:";
+        let tLongitud = "LONGITUD:";
+        let tSlash    = "/";
+        let tTitulo   = "SNAKE JACK";
+        let tInicio1  = "S N A K E   E N   J A C K";
+        let tInicio2  = "Flechas: mover la culebrita";
+        let tInicio3  = "Las PAREDES te eliminan";
+        let tInicio4  = "Chocar contigo mismo tambien";
+        let tInicio5  = "Llega a LONGITUD 20 y GANAS";
+        let tInicio6  = "ESPACIO: jugar      ESC: salir";
+        let tGameOver = "GAME OVER";
+        let tGanaste  = "GANASTE! :D";
+        let tLlegaste = "Llegaste a longitud ";
+        let tFinal    = "Puntaje final: ";
+        let tOpciones = "R: reiniciar     ESC: salir";
+        return;
+    }
+
+    /** Libera todos los textos. Se llama UNA vez desde Main al salir. */
+    function void freeTexts() {
+        do tPuntaje.dispose();  do tLongitud.dispose();
+        do tSlash.dispose();    do tTitulo.dispose();
+        do tInicio1.dispose();  do tInicio2.dispose();
+        do tInicio3.dispose();  do tInicio4.dispose();
+        do tInicio5.dispose();  do tInicio6.dispose();
+        do tGameOver.dispose(); do tGanaste.dispose();
+        do tLlegaste.dispose(); do tFinal.dispose();
+        do tOpciones.dispose();
+        return;
+    }
+
+    /**
+     * Imprime un texto de un solo uso y LO LIBERA inmediatamente.
+     * Es una "function" (no metodo): se usa como Hud.printText("HOLA").
+     */
+    function void printText(String s) {
+        do Output.printString(s);
+        do s.dispose();
+        return;
+    }
+
+    /** Escribe n espacios: sirve para "borrar" un numero viejo. */
+    function void printSpaces(int n) {
+        while (n > 0) {
+            do Output.printChar(32);   // 32 = codigo ASCII del espacio
+            let n = n - 1;
+        }
+        return;
+    }
+
+    /** Constructor. maxLen: longitud maxima para mostrar en el HUD. */
+    constructor Hud new(int maxLen) {
+        let maxLength = maxLen;
+        return this;
+    }
+
+    /** Libera el objeto. Los textos static NO se liberan aqui porque
+        los usara la siguiente partida. */
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    /**
+     * Dibuja las etiquetas fijas del HUD (una vez por partida):
+     *   PUNTAJE: ...      LONGITUD: .. / 20          SNAKE JACK
+     */
+    method void drawLabels() {
+        do Output.moveCursor(0, 1);
+        do Output.printString(tPuntaje);
+        do Output.moveCursor(0, 20);
+        do Output.printString(tLongitud);
+        do Output.moveCursor(0, 33);
+        do Output.printString(tSlash);
+        do Output.moveCursor(0, 35);
+        do Output.printInt(maxLength);
+        do Output.moveCursor(0, 52);
+        do Output.printString(tTitulo);
+        return;
+    }
+
+    /**
+     * Actualiza en tiempo real los numeros del HUD.
+     * Primero escribe espacios encima del numero viejo y luego el nuevo,
+     * para que no queden digitos "fantasma" (ej. 100 -> 90 mostraria 900).
+     */
+    method void update(int score, int length) {
+        do Output.moveCursor(0, 10);
+        do Hud.printSpaces(5);
+        do Output.moveCursor(0, 10);
+        do Output.printInt(score);
+
+        do Output.moveCursor(0, 30);
+        do Hud.printSpaces(2);
+        do Output.moveCursor(0, 30);
+        do Output.printInt(length);
+        return;
+    }
+
+    /**
+     * Dibuja una "ventana" en el centro del tablero para los mensajes
+     * de Game Over y Victoria: rectangulo negro con hueco blanco.
+     */
+    method void drawMessageBox() {
+        do Screen.setColor(true);
+        do Screen.drawRectangle(110, 78, 401, 174);
+        do Screen.setColor(false);
+        do Screen.drawRectangle(113, 81, 398, 171);
+        return;
+    }
+
+    /** Pantalla de inicio (dentro del marco del tablero). */
+    method void showStart() {
+        do Output.moveCursor(5, 19);
+        do Output.printString(tInicio1);
+        do Output.moveCursor(8, 18);
+        do Output.printString(tInicio2);
+        do Output.moveCursor(10, 18);
+        do Output.printString(tInicio3);
+        do Output.moveCursor(12, 18);
+        do Output.printString(tInicio4);
+        do Output.moveCursor(14, 18);
+        do Output.printString(tInicio5);
+        do Output.moveCursor(18, 17);
+        do Output.printString(tInicio6);
+        return;
+    }
+
+    /** Ventana de derrota. */
+    method void showGameOver(int score) {
+        do drawMessageBox();
+        do Output.moveCursor(8, 27);
+        do Output.printString(tGameOver);
+        do Output.moveCursor(10, 23);
+        do Output.printString(tFinal);
+        do Output.printInt(score);
+        do Output.moveCursor(13, 18);
+        do Output.printString(tOpciones);
+        return;
+    }
+
+    /** Ventana de victoria (la culebra llego a la longitud maxima). */
+    method void showWin(int score) {
+        do drawMessageBox();
+        do Output.moveCursor(8, 26);
+        do Output.printString(tGanaste);
+        do Output.moveCursor(10, 21);
+        do Output.printString(tLlegaste);
+        do Output.printInt(maxLength);
+        do Output.moveCursor(12, 23);
+        do Output.printString(tFinal);
+        do Output.printInt(score);
+        do Output.moveCursor(14, 18);
+        do Output.printString(tOpciones);
+        return;
+    }
+}

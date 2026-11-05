@@ -1,0 +1,152 @@
+function Board.new 0
+    push constant 5
+    call Memory.alloc 1
+    pop pointer 0
+    push constant 60
+    pop this 0
+    push constant 28
+    pop this 1
+    push constant 8
+    pop this 2
+    push constant 16
+    pop this 3
+    push constant 24
+    pop this 4
+    push pointer 0
+    return
+function Board.dispose 0
+    push argument 0
+    pop pointer 0
+    push pointer 0
+    call Memory.deAlloc 1
+    pop temp 0
+    push constant 0
+    return
+function Board.draw 0
+    push argument 0
+    pop pointer 0
+    push constant 1
+    neg
+    call Screen.setColor 1
+    pop temp 0
+    push constant 12
+    push constant 20
+    push constant 499
+    push constant 251
+    call Screen.drawRectangle 4
+    pop temp 0
+    push constant 0
+    call Screen.setColor 1
+    pop temp 0
+    push constant 15
+    push constant 23
+    push constant 496
+    push constant 248
+    call Screen.drawRectangle 4
+    pop temp 0
+    push constant 0
+    return
+function Board.isInside 0
+    push argument 0
+    pop pointer 0
+    push argument 1
+    push constant 0
+    lt
+    not
+    if-goto Board_1
+    push constant 0
+    return
+    goto Board_0
+label Board_1
+label Board_0
+    push argument 2
+    push constant 0
+    lt
+    not
+    if-goto Board_3
+    push constant 0
+    return
+    goto Board_2
+label Board_3
+label Board_2
+    push argument 1
+    push this 0
+    push constant 1
+    sub
+    gt
+    not
+    if-goto Board_5
+    push constant 0
+    return
+    goto Board_4
+label Board_5
+label Board_4
+    push argument 2
+    push this 1
+    push constant 1
+    sub
+    gt
+    not
+    if-goto Board_7
+    push constant 0
+    return
+    goto Board_6
+label Board_7
+label Board_6
+    push constant 1
+    neg
+    return
+function Board.toX 0
+    push argument 0
+    pop pointer 0
+    push this 3
+    push argument 1
+    push this 2
+    call Math.multiply 2
+    add
+    return
+function Board.toY 0
+    push argument 0
+    pop pointer 0
+    push this 4
+    push argument 1
+    push this 2
+    call Math.multiply 2
+    add
+    return
+function Board.eraseCell 2
+    push argument 0
+    pop pointer 0
+    push pointer 0
+    push argument 1
+    call Board.toX 2
+    pop local 0
+    push pointer 0
+    push argument 2
+    call Board.toY 2
+    pop local 1
+    push constant 0
+    call Screen.setColor 1
+    pop temp 0
+    push local 0
+    push local 1
+    push local 0
+    push constant 6
+    add
+    push local 1
+    push constant 6
+    add
+    call Screen.drawRectangle 4
+    pop temp 0
+    push constant 0
+    return
+function Board.getCols 0
+    push argument 0
+    pop pointer 0
+    push this 0
+    return
+function Board.getRows 0
+    push argument 0
+    pop pointer 0
+    push this 1
+    return
