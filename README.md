@@ -72,7 +72,7 @@ SnakeJack/
 ## 6. Enlaces
 
 - Repositorio: `https://github.com/<usuario>/SnakeJack` *(reemplazar)*
-- Video de sustentación: `<enlace al video>` *(reemplazar)*
+- Video de sustentación: `https://youtu.be/M-IByA579k4` *(reemplazar)*
 
 ## 7. Créditos
 
